@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizador 3D GLB/GLTF</title>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+        }
+        
+        h1 {
+            color: #60a5fa;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+            background: linear-gradient(90deg, #60a5fa, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .subtitle {
+            color: #94a3b8;
+            font-size: 1.1rem;
+        }
+        
+        .content {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .viewer-container {
+            flex: 1;
+            min-width: 300px;
+            height: 500px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            background: #1e293b;
+            border: 1px solid #334155;
+        }
+        
+        #model-viewer {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        .controls-panel {
+            flex: 0 0 300px;
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 25px;
+            border: 1px solid #334155;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .panel-title {
+            color: #60a5fa;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #334155;
+            font-size: 1.3rem;
+        }
+        
+        .model-selector {
+            margin-bottom: 25px;
+        }
+        
+        select {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            background: #0f172a;
+            color: #e2e8f0;
+            border: 1px solid #475569;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        
+        .control-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #cbd5e1;
+            font-weight: 500;
+        }
+        
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        input[type="range"] {
+            flex: 1;
+            height: 8px;
+            border-radius: 4px;
+            background: #334155;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            border: 2px solid #1e293b;
+        }
+        
+        .slider-value {
+            min-width: 40px;
+            text-align: center;
+            background: #334155;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            color: #60a5fa;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            flex: 1;
+            min-width: 120px;
+            padding: 12px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .btn:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-reset {
+            background: #64748b;
+        }
+        
+        .btn-reset:hover {
+            background: #475569;
+        }
+        
+        .btn-load {
+            background: #10b981;
+        }
+        
+        .btn-load:hover {
+            background: #059669;
+        }
+        
+        .status {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+            background: #1e293b;
+            border: 1px solid #334155;
+        }
+        
+        .loading {
+            color: #f59e0b;
+            border-color: #f59e0b;
+        }
+        
+        .success {
+            color: #10b981;
+            border-color: #10b981;
+        }
+        
+        .error {
+            color: #ef4444;
+            border-color: #ef4444;
+        }
+        
+        .instructions {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 30px;
+            border: 1px solid #334155;
+        }
+        
+        .instructions h3 {
+            color: #60a5fa;
+            margin-bottom: 15px;
+        }
+        
+        .instructions ul {
+            padding-left: 20px;
+            line-height: 1.6;
+        }
+        
+        .instructions li {
+            margin-bottom: 10px;
+            color: #cbd5e1;
+        }
+        
+        .instructions code {
+            background: #0f172a;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: #fbbf24;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #334155;
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 768px) {
+            .content {
+                flex-direction: column;
+            }
+            
+            .viewer-container, .controls-panel {
+                width: 100%;
+            }
+            
+            .viewer-container {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Visualizador 3D GLB/GLTF</h1>
+            <p class="subtitle">Visualize modelos 3D diretamente no navegador</p>
+        </header>
+        
+        <div class="content">
+            <div class="viewer-container">
+                <canvas id="model-viewer"></canvas>
+            </div>
+            
+            <div class="controls-panel">
+                <h2 class="panel-title">Controles</h2>
+                
+                <div id="status" class="status success">Pronto para carregar modelo</div>
+                
+                <div class="model-selector">
+                    <label for="model-select">Selecione um modelo:</label>
+                    <select id="model-select">
+                        <option value="">-- Escolha um modelo --</option>
+                        <option value="https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Duck/glTF-Binary/Duck.glb">Pato (Simples)</option>
+                        <option value="https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Box/glTF-Binary/Box.glb">Caixa (Básico)</option>
+                        <option value="https://threejs.org/examples/models/gltf/DamagedHelmet/glTF/DamagedHelmet.glb">Capacete Danificado</option>
+                        <option value="https://threejs.org/examples/models/gltf/FlightHelmet/glTF/FlightHelmet.glb">Capacete de Voo</option>
+                        <option value="https://threejs.org/examples/models/gltf/RobotExpressive/glTF/RobotExpressive.glb">Robô Expressivo</option>
+                        <option value="https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Lantern/glTF-Binary/Lantern.glb">Lanterna</option>
+                        <option value="https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/BrainStem/glTF-Binary/BrainStem.glb">Cérebro</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>Velocidade de Rotação</label>
+                    <div class="slider-container">
+                        <input type="range" id="rotation-speed" min="0" max="2" step="0.1" value="0.5">
+                        <span id="rotation-value" class="slider-value">0.5</span>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Escala do Modelo</label>
+                    <div class="slider-container">
+                        <input type="range" id="scale" min="0.1" max="3" step="0.1" value="1">
+                        <span id="scale-value" class="slider-value">1.0</span>
+                    </div>
+                </div>
+                
+                <div class="btn-group">
+                    <button id="load-model" class="btn btn-load">Carregar Modelo</button>
+                    <button id="reset-view" class="btn btn-reset">Resetar</button>
+                    <button id="toggle-rotation" class="btn">Rotacionar</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="instructions">
+            <h3>Como usar</h3>
+            <ul>
+                <li><strong>Selecione um modelo</strong> da lista e clique em "Carregar Modelo"</li>
+                <li><strong>Rotacionar:</strong> Arraste com o botão esquerdo do mouse</li>
+                <li><strong>Zoom:</strong> Use a roda do mouse</li>
+                <li><strong>Mover:</strong> Arraste com o botão direito do mouse</li>
+                <li>Ajuste a <strong>rotação automática</strong> e <strong>escala</strong> usando os controles deslizantes</li>
+                <li>Clique em <strong>"Rotacionar"</strong> para pausar/retomar a rotação automática</li>
+                <li>Use <strong>"Resetar"</strong> para voltar à visualização inicial</li>
+            </ul>
+        </div>
+        
+        <footer>
+            <p>Visualizador 3D usando Three.js | Modelos públicos GLB/GLTF</p>
+        </footer>
+    </div>
+
+    <script>
+        // Variáveis globais do Three.js
+        let scene, camera, renderer, controls;
+        let model, mixer, clock;
+        let rotateModel = true;
+        let rotationSpeed = 0.5;
+        
+        // Elementos da interface
+        const statusElement = document.getElementById('status');
+        const modelSelect = document.getElementById('model-select');
+        const rotationSpeedControl = document.getElementById('rotation-speed');
+        const rotationValue = document.getElementById('rotation-value');
+        const scaleControl = document.getElementById('scale');
+        const scaleValue = document.getElementById('scale-value');
+        const loadModelBtn = document.getElementById('load-model');
+        const resetViewBtn = document.getElementById('reset-view');
+        const toggleRotationBtn = document.getElementById('toggle-rotation');
+        
+        // Inicialização do Three.js
+        function init() {
+            // Criar cena
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1e293b);
+            
+            // Adicionar luz ambiente
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            // Adicionar luz direcional
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 20, 5);
+            scene.add(directionalLight);
+            
+            // Criar câmera
+            const canvas = document.getElementById('model-viewer');
+            camera = new THREE.PerspectiveCamera(
+                45,
+                canvas.clientWidth / canvas.clientHeight,
+                0.1,
+                1000
+            );
+            camera.position.set(5, 5, 5);
+            
+            // Criar renderizador
+            renderer = new THREE.WebGLRenderer({
+                canvas: canvas,
+                antialias: true
+            });
+            renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            
+            // Adicionar controles de órbita
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.screenSpacePanning = false;
+            controls.maxPolarAngle = Math.PI;
+            controls.minDistance = 1;
+            controls.maxDistance = 100;
+            
+            // Configurar relógio para animações
+            clock = new THREE.Clock();
+            
+            // Configurar event listeners
+            setupEventListeners();
+            
+            // Iniciar animação
+            animate();
+            
+            // Status inicial
+            updateStatus('Selecione um modelo e clique em "Carregar Modelo"', 'success');
+        }
+        
+        // Função para carregar modelo
+        function loadModel() {
+            const modelUrl = modelSelect.value;
+            
+            if (!modelUrl) {
+                updateStatus('Selecione um modelo da lista primeiro', 'error');
+                return;
+            }
+            
+            updateStatus('Carregando modelo...', 'loading');
+            
+            // Remover modelo anterior se existir
+            if (model) {
+                scene.remove(model);
+                model = null;
+            }
+            
+            // Criar loader
+            const loader = new THREE.GLTFLoader();
+            
+            // Carregar modelo
+            loader.load(
+                modelUrl,
+                // Sucesso
+                (gltf) => {
+                    model = gltf.scene;
+                    scene.add(model);
+                    
+                    // Ajustar câmera para o modelo
+                    fitCameraToObject(model);
+                    
+                    // Configurar animações se existirem
+                    if (gltf.animations && gltf.animations.length) {
+                        mixer = new THREE.AnimationMixer(model);
+                        gltf.animations.forEach(clip => {
+                            mixer.clipAction(clip).play();
+                        });
+                    }
+                    
+                    // Extrair nome do modelo da URL
+                    const modelName = modelSelect.options[modelSelect.selectedIndex].text;
+                    updateStatus(`Modelo carregado: ${modelName}`, 'success');
+                },
+                // Progresso
+                (xhr) => {
+                    const percent = Math.round((xhr.loaded / xhr.total) * 100);
+                    updateStatus(`Carregando: ${percent}%`, 'loading');
+                },
+                // Erro
+                (error) => {
+                    console.error('Erro ao carregar modelo:', error);
+                    updateStatus('Erro ao carregar modelo. Tente outro.', 'error');
+                }
+            );
+        }
+        
+        // Função para ajustar câmera ao objeto
+        function fitCameraToObject(object) {
+            const box = new THREE.Box3().setFromObject(object);
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+            
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const fov = camera.fov * (Math.PI / 180);
+            const cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2)) * 1.5;
+            
+            camera.position.set(center.x, center.y, center.z + cameraZ);
+            camera.lookAt(center);
+            controls.target.set(center.x, center.y, center.z);
+            controls.update();
+        }
+        
+        // Configurar event listeners
+        function setupEventListeners() {
+            // Botão para carregar modelo
+            loadModelBtn.addEventListener('click', loadModel);
+            
+            // Carregar modelo ao pressionar Enter no select
+            modelSelect.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') loadModel();
+            });
+            
+            // Controle de velocidade de rotação
+            rotationSpeedControl.addEventListener('input', function() {
+                rotationSpeed = parseFloat(this.value);
+                rotationValue.textContent = rotationSpeed.toFixed(1);
+            });
+            
+            // Controle de escala
+            scaleControl.addEventListener('input', function() {
+                if (model) {
+                    const scaleValue = parseFloat(this.value);
+                    model.scale.set(scaleValue, scaleValue, scaleValue);
+                    scaleValueElement.textContent = scaleValue.toFixed(1);
+                }
+            });
+            
+            // Botão para resetar visualização
+            resetViewBtn.addEventListener('click', function() {
+                if (model) {
+                    // Resetar escala
+                    const scaleValue = 1.0;
+                    model.scale.set(scaleValue, scaleValue, scaleValue);
+                    scaleControl.value = scaleValue;
+                    scaleValueElement.textContent = scaleValue.toFixed(1);
+                    
+                    // Ajustar câmera
+                    fitCameraToObject(model);
+                }
+                
+                // Resetar controles
+                controls.reset();
+                
+                // Resetar velocidade de rotação
+                rotationSpeedControl.value = 0.5;
+                rotationSpeed = 0.5;
+                rotationValue.textContent = '0.5';
+            });
+            
+            // Botão para pausar/rotacionar
+            toggleRotationBtn.addEventListener('click', function() {
+                rotateModel = !rotateModel;
+                this.textContent = rotateModel ? 'Pausar' : 'Rotacionar';
+            });
+            
+            // Redimensionar janela
+            window.addEventListener('resize', function() {
+                const canvas = document.getElementById('model-viewer');
+                
+                camera.aspect = canvas.clientWidth / canvas.clientHeight;
+                camera.updateProjectionMatrix();
+                
+                renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+            });
+        }
+        
+        // Atualizar status
+        function updateStatus(message, type) {
+            statusElement.textContent = message;
+            statusElement.className = `status ${type}`;
+        }
+        
+        // Loop de animação
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Atualizar controles
+            if (controls) controls.update();
+            
+            // Rotacionar modelo se habilitado
+            if (model && rotateModel) {
+                model.rotation.y += 0.01 * rotationSpeed;
+            }
+            
+            // Atualizar animações do mixer
+            if (mixer) {
+                const delta = clock.getDelta();
+                mixer.update(delta);
+            }
+            
+            // Renderizar cena
+            if (renderer && scene && camera) {
+                renderer.render(scene, camera);
+            }
+        }
+        
+        // Inicializar quando a página carregar
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
+<!--Pato: https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Duck/glTF-Binary/Duck.glb
+
+Caixa: https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Box/glTF-Binary/Box.glb
+
+Cérebro: https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/BrainStem/glTF-Binary/BrainStem.glb
+
+Lanterna: https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Lantern/glTF-Binary/Lantern.glb__
+Cadeira: https://github.com/google/poly/raw/main/assets/5vbJ5vildOq.glb
+
+Mesa: https://github.com/google/poly/raw/main/assets/8V7bJ5vildOq.glb --!>
